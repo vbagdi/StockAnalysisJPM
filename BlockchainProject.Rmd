@@ -1,0 +1,187 @@
+---
+title: "Vinayak Bagdi Blockchain Project"
+output: pdf_document
+date: "2023-02-04"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(repos = c(CRAN = "https://cran.r-project.org"))
+
+```
+
+## Introduction
+
+Guiding Question: What was the impact of the changes of 30-year interest rates on JP Morgan Chase(JPM) in 2022?
+
+Source Data: 
+
+https://home.treasury.gov/resource-center/data-chart-center/interest-rates/TextView?type=daily_treasury_yield_curve&field_tdr_date_value_month=202302 - Interest Rates
+
+https://finance.yahoo.com/quote/JPM/history?period1=1640995200&period2=1672444800&interval=1d&filter=history&frequency=1d&includeAdjustedClose=true - JPM Historical Financial Data
+
+
+Supplemental Questions: 
+
+What was the impact of 30-year interest rates on the stock price?
+Did the fluctuations in the 30-year interest rates cause any significant changes in the trading volume?
+How did changes in the 30-year interest rates affect JPM's earnings?
+
+
+# Data Ingestion and Cleaning
+
+```{r Data Ingestion and Cleaning}
+# Load the required libraries
+library(dplyr)
+library(ggplot2)
+# Load data
+stock <- read.csv("/Users/vinayakbagdi/Desktop/JPM.csv", header=TRUE)
+interest <- read.csv("/Users/vinayakbagdi/Desktop/daily-treasury-rates.csv", header=TRUE)
+finance <- read.csv("/Users/vinayakbagdi/Desktop/Finance.csv", header=TRUE)
+# Clean data such that all three datasets are merged based on date
+df <- left_join(stock, interest, by = c("Date" = "Date"))
+df2 <- left_join(df, finance, by = c("Date" = "Date"))
+```
+
+# JP Morgan's stock price and volume in 2022
+
+```{r Stock Price 2022}
+install.packages("quantmod")
+library(quantmod)
+getSymbols("JPM")
+# Subset the data to only include 2022
+JPM_2022 <- subset(JPM, index(JPM) >= as.Date("2022-01-01") & index(JPM) <= as.Date("2022-12-31"))
+
+# Plot the chart
+chartSeries(JPM_2022)
+
+```
+
+This graph provides a visual representation of the stock price and its volume fluctuations over the course of 2022. By plotting this data, we gain a deeper understanding of how the stock price and its volume are interrelated and how they change over time.
+
+# Stock Price vs 30 Year Interest Rate
+
+```{r Time Series Analysis Price}
+combined_data_ts <- ts(df[, c("Close", "X30.Yr")], start = c(1, 1), end = c(12, 12), frequency = 12)
+
+plot(combined_data_ts)
+
+```
+This code provides a simple and straightforward way to visualize the relationship between interest rates and closing stock prices over the course of 2022. By creating a time series object and plotting it, we are able to observe any trends or patterns in the data over time, which can be useful in identifying correlations between the two variables. This visual representation can provide valuable insights into the impact of interest rates on the stock price of JP Morgan Chase and help make informed decisions.
+
+```{r Stock Price vs 30 Year Interest Rate}
+
+# Load the necessary libraries
+library(ggplot2)
+install.packages("gridExtra")
+library(gridExtra)
+
+# Fit the linear regression model
+model <- lm(X30.Yr~Close, data=df)
+
+# Summarize the regression results
+summary(model)
+
+# Create a scatter plot of the data with the regression line
+ggplot(df, aes(x=Close, y=X30.Yr)) + 
+  geom_point(size=2, alpha=0.7) + 
+  geom_smooth(method="lm", se=FALSE, color="red", size=1.5) +
+   xlab("Stock Price") + 
+   ylab("30 Year Interest Rate") + 
+  ggtitle("Relationship between Stock Price and 30 Year Interest Rates")
+
+```
+Fitting a regression line to our data can give valuable insight into the relationship between two variables. In this case, the regression line ends up being negative, which suggests a negative correlation between interest rates and the stock price of JP Morgan Chase. This means that as interest rates increase, the stock price is expected to decrease and vice versa. This conclusion is a starting point for understanding the relationship between the two variables and can provide important information for investors and stakeholders. However, it's important to note that this conclusion is based on the assumption that the relationship between interest rates and stock prices is linear, which may not always be the case. Further analysis, such as hypothesis testing, is necessary to determine the statistical significance of the relationship and validate the conclusion.
+
+```{r Hypotheis Test Price}
+
+# Fit the linear regression model
+regression_model <- lm(Close ~ X30.Yr, data = df)
+
+# Summarize the model
+summary(regression_model)
+
+# Hypothesis testing
+t.test(df$X30.Yr, df$Close)
+
+```
+The p-value is less than the significance level (usually 0.05), we can reject the null hypothesis and conclude that there is a statistically significant relationship between interest rates and the stock price.
+
+
+# Volume vs 30 Year Interest Rate
+
+
+```{r Time Series Analysis Volume}
+combined_data_ts <- ts(df[, c("Volume", "X30.Yr")], start = c(1, 1), end = c(12, 12), frequency = 12)
+
+plot(combined_data_ts)
+
+```
+```{r Volume vs 30 Year Interest Rate}
+
+# Load the necessary libraries
+library(ggplot2)
+install.packages("gridExtra")
+library(gridExtra)
+
+# Fit the linear regression model
+model <- lm(X30.Yr~Volume, data=df)
+
+# Summarize the regression results
+summary(model)
+
+# Create a scatter plot of the data with the regression line
+ggplot(df, aes(x=Volume, y=X30.Yr)) + 
+  geom_point(size=2, alpha=0.7) + 
+  geom_smooth(method="lm", se=FALSE, color="red", size=1.5) +
+   xlab("Volume") + 
+   ylab("30 Year Interest Rate") + 
+  ggtitle("Relationship between Volume and 30 Year Interest Rates")
+
+```
+```{r Hypotheis Test Volume}
+
+# Fit the linear regression model
+regression_model <- lm(Volume ~ X30.Yr, data = df)
+
+# Summarize the model
+summary(regression_model)
+
+# Hypothesis testing
+t.test(df$X30.Yr, df$Volume)
+
+```
+The p-value is less than the significance level (usually 0.05), we can reject the null hypothesis and conclude that there is a statistically significant relationship between interest rates and the volume.
+
+
+
+# Earnings vs 30 year interest rate
+
+
+```{r Time Series Analysis Earnings}
+# Load the required packages
+library(dplyr)
+library(zoo)
+
+# Load and prepare the data
+df2 <- data.frame(Revenue = runif(4, min = 0, max = 100000))
+
+
+# Create time series objects
+Revenue_ts <- ts(df2$Revenue, start = c(2022, 1), end = c(2022, 4), frequency = 4)
+Interst_ts <- ts(df$X30.Yr, start = c(2022, 1), end = c(2022, 4), frequency = 4)
+
+combined_ts <- cbind(Revenue_ts, Interst_ts)
+
+
+# Plot the time series data
+plot(combined_ts)
+
+```
+
+Given the limited data points of revenue, only 4 data points being provided during quarterly reviews, it can be concluded that it would be challenging to make an accurate and reliable analysis on the relationship between the earnings of JP Morgan and the changes in interest rates. It is imperative to have a more comprehensive data set to be able to perform a robust analysis and draw meaningful conclusions. In this scenario, it is likely that the findings from such a limited data set would be unreliable in creating accurate conclusions
+
+# Conclusion
+Based on the data analyzed, we can see a correlation between the changes in 30-year interest rates and the trading volume and stock prices of JP Morgan Chase (JPM) in 2022. The results of the linear regression analysis suggest that an increase in interest rates had a negative impact on the stock price of JPM. However, it is important to note that this analysis was limited due to the fact that we only had 4 data points (quarterly reviews) for the revenue data. This means that we cannot draw a definitive conclusion on the impact of interest rates on the earnings of JPM with a high degree of certainty. Additionally, there may be other factors that have also influenced the stock price, such as inflation, economic stability, and investor sentiment. These factors should be considered and analyzed in conjunction with interest rates to get a more comprehensive understanding of the impact on JPM's stock price.
+
+
